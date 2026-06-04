@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>AppCompiler — NL → App Config</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',system-ui,sans-serif;background:#0f0f11;color:#e2e8f0;min-height:100vh}
+  header{background:#18181b;border-bottom:1px solid #27272a;padding:16px 24px;display:flex;align-items:center;gap:12px}
+  header h1{font-size:18px;font-weight:700;color:#a78bfa}
+  header span{font-size:13px;color:#71717a;margin-left:4px}
+  .badge{background:#7c3aed22;color:#a78bfa;border:1px solid #7c3aed55;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600}
+  main{max-width:1400px;margin:0 auto;padding:24px;display:grid;grid-template-columns:420px 1fr;gap:20px;align-items:start}
+  .panel{background:#18181b;border:1px solid #27272a;border-radius:12px;overflow:hidden}
+  .panel-header{background:#1c1c1f;padding:12px 16px;border-bottom:1px solid #27272a;font-size:12px;font-weight:600;color:#a1a1aa;text-transform:uppercase;letter-spacing:.5px;display:flex;align-items:center;justify-content:space-between}
+  .panel-body{padding:16px}
+  textarea{width:100%;background:#0f0f11;border:1px solid #27272a;border-radius:8px;color:#e2e8f0;padding:12px;font-size:14px;line-height:1.6;resize:vertical;min-height:160px;outline:none;transition:border-color .2s}
+  textarea:focus{border-color:#7c3aed}
+  .examples{margin-top:12px}
+  .examples label{font-size:11px;color:#71717a;margin-bottom:6px;display:block}
+  .example-btn{background:#1c1c1f;border:1px solid #27272a;color:#a1a1aa;padding:5px 10px;border-radius:6px;font-size:12px;cursor:pointer;margin:3px 3px 3px 0;transition:all .2s}
+  .example-btn:hover{border-color:#7c3aed;color:#a78bfa}
+  .generate-btn{width:100%;margin-top:14px;background:#7c3aed;border:none;color:#fff;padding:12px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;transition:background .2s;position:relative}
+  .generate-btn:hover:not(:disabled){background:#6d28d9}
+  .generate-btn:disabled{background:#3f3f46;cursor:not-allowed;color:#71717a}
+  .stages{margin-top:14px}
+  .stage{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:12px;color:#52525b;transition:color .3s}
+  .stage.active{color:#a78bfa}
+  .stage.done{color:#34d399}
+  .stage.error{color:#f87171}
+  .stage-dot{width:8px;height:8px;border-radius:50%;background:currentColor;flex-shrink:0}
+  .stage.active .stage-dot{animation:pulse .8s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+  .metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+  .metric{background:#0f0f11;border-radius:8px;padding:10px 12px}
+  .metric-val{font-size:20px;font-weight:700;color:#a78bfa}
+  .metric-label{font-size:11px;color:#71717a;margin-top:2px}
+  .result-tabs{display:flex;gap:0;border-bottom:1px solid #27272a}
+  .tab{padding:10px 16px;font-size:12px;font-weight:600;color:#71717a;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;text-transform:uppercase;letter-spacing:.4px}
+  .tab.active{color:#a78bfa;border-bottom-color:#a78bfa}
+  .result-content{padding:0;max-height:calc(100vh - 200px);overflow-y:auto}
+  pre{font-size:12px;line-height:1.5;padding:16px;overflow-x:auto;white-space:pre-wrap;word-break:break-word}
+  .empty-state{text-align:center;padding:60px 20px;color:#52525b}
+  .empty-state .icon{font-size:48px;margin-bottom:12px}
+  .empty-state p{font-size:14px}
+  .exec-badge{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700}
+  .exec-ok{background:#05260f;color:#34d399;border:1px solid #34d39944}
+  .exec-fail{background:#2a0a0a;color:#f87171;border:1px solid #f8717144}
+  .sim-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:16px;border-bottom:1px solid #27272a}
+  .sim-card{background:#0f0f11;border-radius:8px;padding:10px;text-align:center}
+  .sim-card .n{font-size:24px;font-weight:700;color:#e2e8f0}
+  .sim-card .l{font-size:11px;color:#71717a;margin-top:2px}
+  .err-badge{background:#2a0a0a;color:#f87171;border:1px solid #f8717133;border-radius:8px;padding:8px 12px;margin:8px 16px;font-size:12px}
+  .warn-badge{background:#2a1a0a;color:#fb923c;border:1px solid #fb923c33;border-radius:8px;padding:8px 12px;margin:8px 16px;font-size:12px}
+  .artifact-code{background:#0f0f11;border-radius:8px;margin:12px 16px;overflow:hidden}
+  .artifact-label{background:#1c1c1f;padding:8px 12px;font-size:11px;color:#a78bfa;font-weight:600;border-bottom:1px solid #27272a}
+</style>
+</head>
+<body>
+<header>
+  <span style="font-size:22px">⚙️</span>
+  <h1>AppCompiler</h1>
+  <span>Natural Language → Working App Config</span>
+  <div style="margin-left:auto;display:flex;gap:8px">
+    <span class="badge">5-Stage Pipeline</span>
+    <span class="badge">Validation + Repair</span>
+  </div>
+</header>
+
+<main>
+  <!-- Left Panel -->
+  <div>
+    <div class="panel">
+      <div class="panel-header">Input</div>
+      <div class="panel-body">
+        <textarea id="promptInput" placeholder="Describe the app you want to build...&#10;&#10;Example: Build a CRM with login, contacts, dashboard, role-based access, and premium plan with payments. Admins can see analytics."></textarea>
+        <div class="examples">
+          <label>Quick examples</label>
+          <button class="example-btn" onclick="setExample(0)">CRM + Payments</button>
+          <button class="example-btn" onclick="setExample(1)">E-commerce</button>
+          <button class="example-btn" onclick="setExample(2)">Project Mgmt</button>
+          <button class="example-btn" onclick="setExample(3)">SaaS Analytics</button>
+          <button class="example-btn" onclick="setExample(4)">Vague prompt</button>
+          <button class="example-btn" onclick="setExample(5)">Conflicting req</button>
+        </div>
+        <button class="generate-btn" id="generateBtn" onclick="generate()">Generate App Config</button>
+        <button id="launchBtn" style="display:none;width:100%;margin-top:10px;background:#16a34a;border:none;color:#fff;padding:12px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;align-items:center;justify-content:center;gap:8px">🚀 Launch App →</button>
+      </div>
+    </div>
+
+    <!-- Pipeline Stages -->
+    <div class="panel" style="margin-top:16px">
+      <div class="panel-header">Pipeline Stages</div>
+      <div class="panel-body" style="padding:8px 16px">
+        <div class="stage" id="s1"><div class="stage-dot"></div>1. Intent Extraction</div>
+        <div class="stage" id="s2"><div class="stage-dot"></div>2. System Design</div>
+        <div class="stage" id="s3"><div class="stage-dot"></div>3. Schema Generation (parallel)</div>
+        <div class="stage" id="s4"><div class="stage-dot"></div>4. Validate + Repair</div>
+        <div class="stage" id="s5"><div class="stage-dot"></div>5. Runtime Simulation</div>
+      </div>
+    </div>
+
+    <!-- Metrics -->
+    <div class="panel" style="margin-top:16px" id="metricsPanel" hidden>
+      <div class="panel-header">Run Metrics</div>
+      <div class="panel-body">
+        <div class="metrics">
+          <div class="metric"><div class="metric-val" id="m-time">-</div><div class="metric-label">Total Latency</div></div>
+          <div class="metric"><div class="metric-val" id="m-cost">-</div><div class="metric-label">Est. Cost</div></div>
+          <div class="metric"><div class="metric-val" id="m-repairs">-</div><div class="metric-label">Repairs Made</div></div>
+          <div class="metric"><div class="metric-val" id="m-calls">-</div><div class="metric-label">LLM Calls</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Panel -->
+  <div class="panel" id="outputPanel">
+    <div class="panel-header">
+      <span>Output</span>
+      <span id="execBadge"></span>
+    </div>
+    <div id="simSummary" hidden></div>
+    <div class="result-tabs" id="resultTabs" hidden>
+      <div class="tab active" onclick="showTab('full')">Full Config</div>
+      <div class="tab" onclick="showTab('db')">Database</div>
+      <div class="tab" onclick="showTab('api')">API</div>
+      <div class="tab" onclick="showTab('ui')">UI</div>
+      <div class="tab" onclick="showTab('auth')">Auth</div>
+      <div class="tab" onclick="showTab('artifacts')">Code Artifacts</div>
+      <div class="tab" onclick="showTab('validation')">Validation Log</div>
+    </div>
+    <div class="result-content" id="resultContent">
+      <div class="empty-state">
+        <div class="icon">🔧</div>
+        <p>Enter a prompt to compile your app config</p>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+const EXAMPLES = [
+  "Build a CRM with login, contacts, dashboard, role-based access, and premium plan with payments. Admins can see analytics.",
+  "Build an e-commerce platform with product catalog, shopping cart, checkout with Stripe payments, order tracking, and admin inventory management.",
+  "Create a project management tool like Jira with sprints, tickets, team members, comments, file attachments, and manager/developer roles.",
+  "SaaS analytics dashboard where companies can track user events, funnels, cohort analysis, with free/pro/enterprise plans.",
+  "I want an app for my business that does stuff with customers and maybe payments.",
+  "Build a social app where users can post content but also its an e-commerce store and also users are anonymous but also have profiles."
+];
+
+let currentResult = null;
+
+function setExample(i) {
+  document.getElementById('promptInput').value = EXAMPLES[i];
+}
+
+const stageMap = {
+  '1_intent_extraction': 's1',
+  '2_system_design': 's2',
+  '3_schema_generation': 's3',
+  '4_validate_repair': 's4',
+  '5_runtime_simulation': 's5'
+};
+
+function resetStages() {
+  for (const id of ['s1','s2','s3','s4','s5']) {
+    document.getElementById(id).className = 'stage';
+  }
+}
+
+function setStage(id, status) {
+  const el = document.getElementById(id);
+  if (el) el.className = `stage ${status}`;
+}
+
+async function generate() {
+  const prompt = document.getElementById('promptInput').value.trim();
+  if (!prompt || prompt.length < 10) return alert('Please enter a longer prompt.');
+
+  const btn = document.getElementById('generateBtn');
+  btn.disabled = true;
+  btn.textContent = 'Compiling...';
+  document.getElementById('launchBtn').style.display = 'none';
+  resetStages();
+  document.getElementById('resultContent').innerHTML = '<div class="empty-state"><div class="icon" style="animation:pulse 1s infinite">⚙️</div><p>Running pipeline...</p></div>';
+  document.getElementById('resultTabs').hidden = true;
+  document.getElementById('simSummary').hidden = true;
+  document.getElementById('execBadge').innerHTML = '';
+  document.getElementById('metricsPanel').hidden = true;
+
+  // Activate all stages progressively (since we don't have SSE response parsing per-stage)
+  const stageTimers = [
+    setTimeout(() => setStage('s1','active'), 100),
+    setTimeout(() => { setStage('s1','done'); setStage('s2','active'); }, 3000),
+    setTimeout(() => { setStage('s2','done'); setStage('s3','active'); }, 7000),
+    setTimeout(() => { setStage('s3','done'); setStage('s4','active'); }, 18000),
+    setTimeout(() => { setStage('s4','done'); setStage('s5','active'); }, 25000),
+  ];
+
+  try {
+    const resp = await fetch('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt })
+    });
+    stageTimers.forEach(clearTimeout);
+
+    const data = await resp.json();
+    currentResult = data;
+
+    for (const id of ['s1','s2','s3','s4','s5']) setStage(id, 'done');
+    if (data.meta?.stages) {
+      for (const s of data.meta.stages) {
+        const sid = stageMap[s.stage];
+        if (sid) setStage(sid, s.status === 'ok' ? 'done' : 'error');
+      }
+    }
+
+    if (data.success) {
+      renderResult(data);
+      // Show launch button
+      document.getElementById('launchBtn').style.display = 'flex';
+      document.getElementById('launchBtn').onclick = () => window.open(`/app/${data.runId}`, '_blank');
+    } else {
+      for (const id of ['s1','s2','s3','s4','s5']) setStage(id, 'error');
+      document.getElementById('resultContent').innerHTML = `<pre style="color:#f87171">Error: ${data.error}</pre>`;
+    }
+  } catch (err) {
+    stageTimers.forEach(clearTimeout);
+    document.getElementById('resultContent').innerHTML = `<pre style="color:#f87171">Network error: ${err.message}</pre>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Generate App Config';
+  }
+}
+
+function renderResult(data) {
+  const sim = data.meta?.simulation;
+  const vlog = data.meta?.validationLog;
+
+  // Execution badge
+  document.getElementById('execBadge').innerHTML = sim?.executable
+    ? '<span class="exec-badge exec-ok">✓ Executable</span>'
+    : '<span class="exec-badge exec-fail">⚠ Has Issues</span>';
+
+  // Sim summary
+  if (sim) {
+    const s = sim.summary;
+    document.getElementById('simSummary').innerHTML = `
+      <div class="sim-grid">
+        <div class="sim-card"><div class="n">${s.tables}</div><div class="l">DB Tables</div></div>
+        <div class="sim-card"><div class="n">${s.routes}</div><div class="l">API Routes</div></div>
+        <div class="sim-card"><div class="n">${s.pages}</div><div class="l">UI Pages</div></div>
+        <div class="sim-card"><div class="n">${s.permissions}</div><div class="l">Permissions</div></div>
+        <div class="sim-card"><div class="n" style="color:${s.errors>0?'#f87171':'#34d399'}">${s.errors}</div><div class="l">Errors</div></div>
+        <div class="sim-card"><div class="n" style="color:${s.warnings>0?'#fb923c':'#71717a'}">${s.warnings}</div><div class="l">Warnings</div></div>
+      </div>
+      ${sim.issues.filter(i=>i.status==='error').map(i=>`<div class="err-badge">❌ ${i.reason||i.issues?.join(', ')}</div>`).join('')}
+      ${sim.issues.filter(i=>i.status==='warn').map(i=>`<div class="warn-badge">⚠ ${i.reason||i.issues?.join(', ')}</div>`).join('')}
+    `;
+    document.getElementById('simSummary').hidden = false;
+  }
+
+  // Metrics
+  const m = data.meta;
+  document.getElementById('m-time').textContent = `${(m.totalMs/1000).toFixed(1)}s`;
+  document.getElementById('m-cost').textContent = `$${m.cost?.estimatedUSD || '?'}`;
+  document.getElementById('m-repairs').textContent = vlog?.totalRepairs ?? '?';
+  document.getElementById('m-calls').textContent = m.cost?.llmCalls ?? '?';
+  document.getElementById('metricsPanel').hidden = false;
+
+  document.getElementById('resultTabs').hidden = false;
+  showTab('full');
+}
+
+function showTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  event?.target?.classList.add('active');
+
+  // Fix active tab styling when called programmatically
+  const tabs = document.querySelectorAll('.tab');
+  const tabNames = ['full','db','api','ui','auth','artifacts','validation'];
+  const idx = tabNames.indexOf(tab);
+  if (idx >= 0) { tabs.forEach(t=>t.classList.remove('active')); tabs[idx]?.classList.add('active'); }
+
+  const c = currentResult?.config;
+  const m = currentResult?.meta;
+  let content = '';
+
+  if (tab === 'full') content = syntax(currentResult?.config);
+  else if (tab === 'db') content = syntax(c?.database);
+  else if (tab === 'api') content = syntax(c?.api);
+  else if (tab === 'ui') content = syntax(c?.ui);
+  else if (tab === 'auth') content = syntax(c?.auth);
+  else if (tab === 'artifacts') {
+    const a = m?.artifacts;
+    content = `
+      <div class="artifact-code"><div class="artifact-label">Express Router (routes/index.js)</div><pre>${esc(a?.expressRouter)}</pre></div>
+      <div class="artifact-code"><div class="artifact-label">DB Migration Schema (db/schema.js)</div><pre>${esc(a?.dbMigration)}</pre></div>
+      <div class="artifact-code"><div class="artifact-label">React Page Stubs (pages/)</div><pre>${esc(a?.reactPages)}</pre></div>
+    `;
+    document.getElementById('resultContent').innerHTML = content;
+    return;
+  } else if (tab === 'validation') {
+    content = syntax(m?.validationLog);
+  }
+
+  document.getElementById('resultContent').innerHTML = `<pre>${esc(JSON.stringify(JSON.parse(JSON.stringify(content===syntax(c?.database)?c?.database:content===syntax(c?.api)?c?.api:content===syntax(c?.ui)?c?.ui:content===syntax(c?.auth)?c?.auth:content===syntax(m?.validationLog)?m?.validationLog:currentResult?.config)), null, 2))}</pre>`;
+}
+
+function syntax(obj) { return JSON.stringify(obj, null, 2); }
+function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// Override showTab to be cleaner
+window.showTab = function(tab) {
+  const tabs = document.querySelectorAll('.tab');
+  const tabNames = ['full','db','api','ui','auth','artifacts','validation'];
+  const idx = tabNames.indexOf(tab);
+  tabs.forEach(t=>t.classList.remove('active'));
+  if (idx >= 0) tabs[idx]?.classList.add('active');
+
+  const c = currentResult?.config;
+  const m = currentResult?.meta;
+  let obj;
+
+  if (tab === 'full') obj = c;
+  else if (tab === 'db') obj = c?.database;
+  else if (tab === 'api') obj = c?.api;
+  else if (tab === 'ui') obj = c?.ui;
+  else if (tab === 'auth') obj = c?.auth;
+  else if (tab === 'validation') obj = m?.validationLog;
+  else if (tab === 'artifacts') {
+    const a = m?.artifacts;
+    document.getElementById('resultContent').innerHTML = `
+      <div class="artifact-code"><div class="artifact-label">Express Router (routes/index.js)</div><pre>${esc(a?.expressRouter)}</pre></div>
+      <div class="artifact-code"><div class="artifact-label">DB Migration Schema (db/schema.js)</div><pre>${esc(a?.dbMigration)}</pre></div>
+      <div class="artifact-code"><div class="artifact-label">React Page Stubs (pages/)</div><pre>${esc(a?.reactPages)}</pre></div>
+    `;
+    return;
+  }
+  document.getElementById('resultContent').innerHTML = `<pre>${esc(JSON.stringify(obj, null, 2))}</pre>`;
+}
+</script>
+</body>
+</html>

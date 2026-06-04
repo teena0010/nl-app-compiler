@@ -1,0 +1,169 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AppConfig",
+  "type": "object",
+  "required": ["meta", "intent", "design", "database", "api", "ui", "auth"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": ["appName", "appType", "generatedAt", "version"],
+      "properties": {
+        "appName": { "type": "string", "minLength": 1 },
+        "appType": { "type": "string", "enum": ["web", "mobile", "both"] },
+        "generatedAt": { "type": "string" },
+        "version": { "type": "string" },
+        "assumptions": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "intent": {
+      "type": "object",
+      "required": ["features", "entities", "roles", "flows"],
+      "properties": {
+        "features": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "entities": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "roles": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "flows": { "type": "array", "items": { "type": "string" } },
+        "hasPremium": { "type": "boolean" },
+        "hasPayments": { "type": "boolean" },
+        "hasAnalytics": { "type": "boolean" },
+        "clarifications": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "design": {
+      "type": "object",
+      "required": ["modules", "dataFlow"],
+      "properties": {
+        "modules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "type", "entities", "roles"],
+            "properties": {
+              "name": { "type": "string" },
+              "type": { "type": "string" },
+              "entities": { "type": "array", "items": { "type": "string" } },
+              "roles": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        },
+        "dataFlow": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "database": {
+      "type": "object",
+      "required": ["tables"],
+      "properties": {
+        "tables": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "fields"],
+            "properties": {
+              "name": { "type": "string" },
+              "fields": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["name", "type"],
+                  "properties": {
+                    "name": { "type": "string" },
+                    "type": { "type": "string", "enum": ["string", "integer", "float", "boolean", "date", "datetime", "text", "json", "uuid"] },
+                    "required": { "type": "boolean" },
+                    "unique": { "type": "boolean" },
+                    "foreignKey": { "type": "string" }
+                  }
+                }
+              },
+              "relations": { "type": "array", "items": { "type": "object" } }
+            }
+          }
+        }
+      }
+    },
+    "api": {
+      "type": "object",
+      "required": ["endpoints"],
+      "properties": {
+        "endpoints": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["path", "method", "handler", "auth", "roles"],
+            "properties": {
+              "path": { "type": "string" },
+              "method": { "type": "string", "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"] },
+              "handler": { "type": "string" },
+              "auth": { "type": "boolean" },
+              "roles": { "type": "array", "items": { "type": "string" } },
+              "requestBody": { "type": "object" },
+              "responseSchema": { "type": "object" },
+              "dbTable": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "ui": {
+      "type": "object",
+      "required": ["pages"],
+      "properties": {
+        "pages": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "path", "layout", "components", "roles"],
+            "properties": {
+              "name": { "type": "string" },
+              "path": { "type": "string" },
+              "layout": { "type": "string", "enum": ["auth", "dashboard", "public", "settings"] },
+              "components": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["type", "dataSource"],
+                  "properties": {
+                    "type": { "type": "string" },
+                    "dataSource": { "type": "string" },
+                    "fields": { "type": "array", "items": { "type": "string" } },
+                    "actions": { "type": "array", "items": { "type": "string" } }
+                  }
+                }
+              },
+              "roles": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        }
+      }
+    },
+    "auth": {
+      "type": "object",
+      "required": ["type", "roles", "permissions"],
+      "properties": {
+        "type": { "type": "string", "enum": ["jwt", "session", "oauth"] },
+        "roles": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+        "permissions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["role", "resource", "actions"],
+            "properties": {
+              "role": { "type": "string" },
+              "resource": { "type": "string" },
+              "actions": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        },
+        "premiumGating": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "feature": { "type": "string" },
+              "requiredPlan": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}
